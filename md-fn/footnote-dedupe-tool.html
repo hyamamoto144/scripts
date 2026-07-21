@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>脚注重複チェッカー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#eef0ea;
+    --paper-deep:#e6e8e0;
+    --grid-line: rgba(34,35,30,0.06);
+    --ink:#22231e;
+    --ink-soft:#63645a;
+    --ink-faint:#9a9a8d;
+    --border:#d7d5c6;
+    --shu:#c7391c;
+    --shu-soft: rgba(199,57,28,0.10);
+    --shu-line: rgba(199,57,28,0.35);
+    --ao:#3a5a73;
+    --ao-soft: rgba(58,90,115,0.10);
+    --ao-line: rgba(58,90,115,0.35);
+    --card:#f7f7f2;
+    --radius: 3px;
+    --serif: 'Shippori Mincho', 'Hiragino Mincho ProN', serif;
+    --sans: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
+    --mono: 'JetBrains Mono', 'BIZ UDGothic', 'Courier New', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0/100% 28px,
+      var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    min-height:100vh;
+    line-height:1.75;
+  }
+  .app{max-width:1180px;margin:0 auto;padding:36px 28px 80px;}
+
+  .masthead{
+    display:flex;
+    gap:24px;
+    align-items:flex-end;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:18px;
+    margin-bottom:28px;
+  }
+  .masthead .mark{
+    font-family:var(--serif);
+    font-weight:700;
+    font-size:30px;
+    line-height:1.3;
+    letter-spacing:.02em;
+    white-space:nowrap;
+  }
+  .masthead .mark small{
+    display:block;
+    font-family:var(--mono);
+    font-size:11px;
+    font-weight:500;
+    color:var(--shu);
+    letter-spacing:.14em;
+    margin-bottom:6px;
+  }
+  .masthead .lede{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    max-width:52ch;
+    margin:0 0 4px;
+  }
+
+  .dropzone{
+    border:1.5px dashed var(--border);
+    border-radius:var(--radius);
+    background:rgba(255,255,255,0.35);
+    padding:28px;
+    text-align:center;
+    margin-bottom:28px;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .dropzone.dragover{
+    border-color:var(--shu);
+    background:var(--shu-soft);
+  }
+  .dropzone p{margin:0 0 4px;font-size:14px;color:var(--ink-soft);}
+  .dropzone .hint{font-size:12px;color:var(--ink-faint);}
+  .dropzone button{
+    font-family:var(--sans);
+    font-weight:700;
+    font-size:13.5px;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    border-radius:var(--radius);
+    padding:9px 18px;
+    cursor:pointer;
+    margin:10px 4px 6px;
+  }
+  .dropzone button:hover{background:var(--shu);}
+  .dropzone button.secondary{
+    background:transparent;
+    color:var(--ink-soft);
+    border:1px solid var(--border);
+  }
+  .dropzone button.secondary:hover{border-color:var(--ink-soft);color:var(--ink);}
+
+  .workspace{display:flex;gap:24px;align-items:flex-start;}
+
+  .file-list{
+    flex:0 0 268px;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  .file-tab{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:11px 12px;
+    border:1px solid transparent;
+    border-radius:var(--radius);
+    cursor:pointer;
+    font-size:13px;
+  }
+  .file-tab:hover{background:rgba(255,255,255,0.5);}
+  .file-tab.active{
+    background:var(--card);
+    border-color:var(--border);
+    box-shadow: -3px 0 0 var(--shu) inset;
+  }
+  .file-tab .fname{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-family:var(--mono);
+    font-size:12px;
+  }
+  .badge{
+    flex:none;
+    font-family:var(--mono);
+    font-size:11px;
+    font-weight:500;
+    padding:2px 7px;
+    border-radius:999px;
+    line-height:1.6;
+  }
+  .badge.changed{background:var(--shu);color:#fff;}
+  .badge.clean{background:transparent;color:var(--ink-faint);border:1px solid var(--border);}
+
+  .detail{
+    flex:1;
+    min-width:0;
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:26px 30px;
+  }
+  .detail h2{
+    font-family:var(--serif);
+    font-weight:700;
+    font-size:19px;
+    margin:0 0 4px;
+  }
+  .detail .filepath{
+    font-family:var(--mono);
+    font-size:11.5px;
+    color:var(--ink-faint);
+    margin-bottom:20px;
+  }
+  .empty-state{
+    color:var(--ink-faint);
+    font-size:13.5px;
+    padding:40px 10px;
+    text-align:center;
+  }
+  .clean-state{
+    color:var(--ink-soft);
+    font-size:13.5px;
+    padding:6px 0 2px;
+  }
+
+  table.report{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12.5px;
+    margin-bottom:24px;
+  }
+  table.report th, table.report td{
+    text-align:left;
+    padding:7px 10px;
+    border-bottom:1px solid var(--border);
+    vertical-align:top;
+  }
+  table.report th{
+    font-weight:700;
+    color:var(--ink-soft);
+    font-size:11px;
+    letter-spacing:.04em;
+  }
+  table.report td.label{font-family:var(--mono);white-space:nowrap;}
+  table.report td.count{font-family:var(--mono);color:var(--shu);white-space:nowrap;}
+  table.report td.newlabels{font-family:var(--mono);color:var(--ao);line-height:1.9;word-break:break-all;}
+
+  .section-title{
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.1em;
+    color:var(--ink-faint);
+    margin:26px 0 10px;
+    text-transform:uppercase;
+  }
+
+  .diff-line{
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    margin-bottom:10px;
+    overflow:hidden;
+    font-family:var(--mono);
+    font-size:12.5px;
+  }
+  .diff-row{
+    display:flex;
+    gap:10px;
+    padding:8px 12px;
+    align-items:flex-start;
+  }
+  .diff-row .ln{
+    flex:none;
+    width:42px;
+    color:var(--ink-faint);
+    font-size:11px;
+    padding-top:1px;
+  }
+  .diff-row .mark{flex:none;width:14px;font-weight:700;}
+  .diff-row.old{background:var(--ao-soft);}
+  .diff-row.old .mark{color:var(--ao);}
+  .diff-row.old del{color:var(--ao);text-decoration:line-through;text-decoration-color:var(--ao-line);background:none;}
+  .diff-row.new{background:var(--shu-soft);}
+  .diff-row.new .mark{color:var(--shu);}
+  .diff-row.new ins{color:var(--shu);text-decoration:underline;text-decoration-color:var(--shu-line);text-decoration-thickness:2px;background:none;font-weight:500;}
+  .diff-row .content{white-space:pre-wrap;word-break:break-all;flex:1;}
+
+  .added-line{
+    display:flex;
+    gap:10px;
+    padding:6px 12px;
+    background:var(--shu-soft);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    font-family:var(--mono);
+    font-size:12px;
+    margin-bottom:6px;
+    align-items:flex-start;
+  }
+  .added-line .mark{color:var(--shu);font-weight:700;flex:none;width:14px;}
+  .added-line .content{white-space:pre-wrap;word-break:break-all;color:var(--ink-soft);}
+
+  .actions{margin-top:26px;padding-top:18px;border-top:1px solid var(--border);}
+  .download-btn{
+    font-family:var(--sans);
+    font-weight:700;
+    font-size:13.5px;
+    background:var(--shu);
+    color:#fff;
+    border:none;
+    border-radius:var(--radius);
+    padding:10px 20px;
+    cursor:pointer;
+  }
+  .download-btn:hover{background:#a92c14;}
+
+  @media (max-width:760px){
+    .workspace{flex-direction:column;}
+    .file-list{flex:none;width:100%;flex-direction:row;flex-wrap:wrap;}
+    .file-tab{flex:1 1 auto;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="masthead">
+    <div class="mark"><small>DUPLICATE FOOTNOTE CHECKER</small>脚注重複<br>チェッカー</div>
+    <p class="lede">印刷物は「1参照=1脚注」を前提とするため、同じ注釈が本文の複数箇所から参照されていると2件目以降を適切に処理できません。これは、そうした要件に対応するためのツールです。章ごとにMarkdownを読み込むと、重複を検出して機械的にラベルを振り分けます。</p>
+  </header>
+
+  <section class="dropzone" id="dropzone">
+    <p>ここに章ごとのMarkdownファイルをドラッグ&amp;ドロップ</p>
+    <div class="hint">複数ファイルまとめて可。元のファイルは変更されません。</div>
+    <input type="file" id="fileInput" multiple accept=".md,.markdown,text/markdown" hidden>
+    <div>
+      <button id="browseBtn" type="button">ファイルを選択</button>
+      <button id="clearBtn" type="button" class="secondary" hidden>クリア</button>
+    </div>
+  </section>
+
+  <div class="workspace" id="workspace" hidden>
+    <aside class="file-list" id="fileList"></aside>
+    <main class="detail" id="detail">
+      <div class="empty-state">左のリストからファイルを選んでください</div>
+    </main>
+  </div>
+
+</div>
+
+<script>
+(function(){
+
+  // ---------- コアロジック ----------
+  function slugify(text){
+    let t = text.replace(/<[^>]+>/g, '');
+    t = t.trim();
+    t = t.replace(/[^\p{L}\p{N}]+/gu, '-');
+    t = t.replace(/^-+|-+$/g, '');
+    if (t.length > 24) t = t.slice(0, 24);
+    return t || null;
+  }
+
+  function randomSuffix(){
+    const bytes = new Uint8Array(2);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function processMarkdown(text){
+    const lines = text.split('\n');
+    const defPattern = /^\[\^([^\]\s]+)\]:\s?(.*)$/;
+    const refPattern = /\[\^([^\]\s]+)\]/g;
+    const anchorPattern = /\{#([A-Za-z0-9\-_]+)\}\s*$/;
+    const headingPattern = /^(#{1,6})\s+(.*)$/;
+
+    const definitions = {};
+    const defLineIdx = new Set();
+    lines.forEach((line, i) => {
+      const m = defPattern.exec(line);
+      if (m){ definitions[m[1]] = m[2]; defLineIdx.add(i); }
+    });
+
+    let currentSlug = null;
+    const slugAtLine = [];
+    lines.forEach((line, i) => {
+      const trimmed = line.trim();
+      const hm = headingPattern.exec(trimmed);
+      if (hm){
+        const headingText = hm[2];
+        const am = anchorPattern.exec(headingText);
+        currentSlug = am ? am[1] : slugify(headingText);
+      }
+      slugAtLine[i] = currentSlug;
+    });
+
+    const occurrences = [];
+    lines.forEach((line, i) => {
+      if (defLineIdx.has(i)) return;
+      let m;
+      refPattern.lastIndex = 0;
+      while ((m = refPattern.exec(line)) !== null){
+        const label = m[1];
+        if (Object.prototype.hasOwnProperty.call(definitions, label)){
+          occurrences.push({lineIdx:i, start:m.index, end:m.index+m[0].length, label});
+        }
+      }
+    });
+
+    const labelOccurrences = {};
+    occurrences.forEach(occ => {
+      (labelOccurrences[occ.label] = labelOccurrences[occ.label] || []).push(occ);
+    });
+
+    const usedLabels = new Set(Object.keys(definitions));
+    const renamesByLine = {};
+    const newDefinitions = [];
+    const report = [];
+
+    Object.keys(labelOccurrences).forEach(label => {
+      const occs = labelOccurrences[label];
+      if (occs.length <= 1) return;
+      const newLabelsForLabel = [];
+      occs.slice(1).forEach(occ => {
+        const slug = slugAtLine[occ.lineIdx];
+        let base = slug ? `${label}-${slug}` : `${label}-${randomSuffix()}`;
+        let newLabel = base;
+        while (usedLabels.has(newLabel)){
+          newLabel = `${base}-${randomSuffix()}`;
+        }
+        usedLabels.add(newLabel);
+        (renamesByLine[occ.lineIdx] = renamesByLine[occ.lineIdx] || []).push({
+          start:occ.start, end:occ.end, newLabel
+        });
+        newDefinitions.push({origLabel:label, newLabel, content:definitions[label]});
+        newLabelsForLabel.push(newLabel);
+      });
+      report.push({label, count:occs.length, newLabels:newLabelsForLabel});
+    });
+
+    if (report.length === 0){
+      return {hasChanges:false};
+    }
+
+    const modifiedLines = [];
+    Object.keys(renamesByLine).forEach(lineIdxStr => {
+      const lineIdx = parseInt(lineIdxStr, 10);
+      const edits = renamesByLine[lineIdx];
+      const oldText = lines[lineIdx];
+      let newText = oldText;
+      const sortedDesc = [...edits].sort((a,b)=>b.start-a.start);
+      sortedDesc.forEach(e => {
+        newText = newText.slice(0, e.start) + `[^${e.newLabel}]` + newText.slice(e.end);
+      });
+      lines[lineIdx] = newText;
+      modifiedLines.push({lineNumber:lineIdx+1, oldText, newText, edits});
+    });
+
+    const defIndices = Array.from(defLineIdx);
+    const insertAt = defIndices.length ? Math.max(...defIndices) + 1 : lines.length;
+    const newDefLines = newDefinitions.map(d => `[^${d.newLabel}]: ${d.content}`);
+    lines.splice(insertAt, 0, ...newDefLines);
+
+    const fixedContent = lines.join('\n');
+    const addedLines = newDefLines.map((t,i) => ({lineNumber:insertAt+i+1, text:t}));
+
+    return {hasChanges:true, report, modifiedLines, addedLines, fixedContent};
+  }
+
+  function buildLineDiffSegments(oldText, edits){
+    const sorted = [...edits].sort((a,b)=>a.start-b.start);
+    const oldSegs = [];
+    const newSegs = [];
+    let cursor = 0;
+    sorted.forEach(e => {
+      if (e.start > cursor){
+        const common = oldText.slice(cursor, e.start);
+        oldSegs.push({type:'text', value:common});
+        newSegs.push({type:'text', value:common});
+      }
+      const oldTok = oldText.slice(e.start, e.end);
+      oldSegs.push({type:'del', value:oldTok});
+      newSegs.push({type:'ins', value:`[^${e.newLabel}]`});
+      cursor = e.end;
+    });
+    if (cursor < oldText.length){
+      const rest = oldText.slice(cursor);
+      oldSegs.push({type:'text', value:rest});
+      newSegs.push({type:'text', value:rest});
+    }
+    return {oldSegs, newSegs};
+  }
+
+  function escapeHtml(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function segsToHtml(segs){
+    return segs.map(s => {
+      const safe = escapeHtml(s.value);
+      if (s.type === 'del') return `<del>${safe}</del>`;
+      if (s.type === 'ins') return `<ins>${safe}</ins>`;
+      return safe;
+    }).join('');
+  }
+
+  // ---------- UI ----------
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const browseBtn = document.getElementById('browseBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const workspace = document.getElementById('workspace');
+  const fileListEl = document.getElementById('fileList');
+  const detailEl = document.getElementById('detail');
+
+  let files = []; // {name, result}
+  let activeIndex = -1;
+
+  browseBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+  ['dragenter','dragover'].forEach(evt =>
+    dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('dragover'); })
+  );
+  ['dragleave','drop'].forEach(evt =>
+    dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('dragover'); })
+  );
+  dropzone.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+
+  clearBtn.addEventListener('click', () => {
+    files = [];
+    activeIndex = -1;
+    fileInput.value = '';
+    workspace.hidden = true;
+    clearBtn.hidden = true;
+  });
+
+  function handleFiles(fileListObj){
+    const list = Array.from(fileListObj).filter(f => /\.(md|markdown)$/i.test(f.name));
+    if (list.length === 0) return;
+    let pending = list.length;
+    list.forEach(f => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = processMarkdown(reader.result);
+        files.push({name:f.name, result});
+        pending--;
+        if (pending === 0){
+          workspace.hidden = false;
+          clearBtn.hidden = false;
+          renderFileList();
+          if (activeIndex === -1 && files.length) selectFile(0);
+        }
+      };
+      reader.readAsText(f, 'UTF-8');
+    });
+  }
+
+  function renderFileList(){
+    fileListEl.innerHTML = '';
+    files.forEach((f, i) => {
+      const tab = document.createElement('div');
+      tab.className = 'file-tab' + (i === activeIndex ? ' active' : '');
+      const totalRenamed = f.result.hasChanges
+        ? f.result.report.reduce((sum, r) => sum + r.newLabels.length, 0)
+        : 0;
+      tab.innerHTML = `
+        <span class="fname">${escapeHtml(f.name)}</span>
+        <span class="badge ${f.result.hasChanges ? 'changed' : 'clean'}">${f.result.hasChanges ? totalRenamed + '件' : '変更なし'}</span>
+      `;
+      tab.addEventListener('click', () => selectFile(i));
+      fileListEl.appendChild(tab);
+    });
+  }
+
+  function selectFile(i){
+    activeIndex = i;
+    renderFileList();
+    renderDetail(files[i]);
+  }
+
+  function renderDetail(file){
+    const r = file.result;
+    if (!r.hasChanges){
+      detailEl.innerHTML = `
+        <h2>${escapeHtml(file.name)}</h2>
+        <div class="filepath">重複参照の検出結果</div>
+        <div class="clean-state">重複参照は見つかりませんでした。変更不要です。</div>
+      `;
+      return;
+    }
+
+    const reportRows = r.report.map(row => `
+      <tr>
+        <td class="label">[^${escapeHtml(row.label)}]</td>
+        <td class="count">${row.count}回</td>
+        <td class="newlabels">${row.newLabels.map(l => `[^${escapeHtml(l)}]`).join('<br>')}</td>
+      </tr>
+    `).join('');
+
+    const diffRows = r.modifiedLines.map(ml => {
+      const {oldSegs, newSegs} = buildLineDiffSegments(ml.oldText, ml.edits);
+      return `
+        <div class="diff-line">
+          <div class="diff-row old">
+            <span class="ln">${ml.lineNumber}</span>
+            <span class="mark">−</span>
+            <span class="content">${segsToHtml(oldSegs)}</span>
+          </div>
+          <div class="diff-row new">
+            <span class="ln">${ml.lineNumber}</span>
+            <span class="mark">＋</span>
+            <span class="content">${segsToHtml(newSegs)}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const addedRows = r.addedLines.map(al => `
+      <div class="added-line">
+        <span class="mark">＋</span>
+        <span class="content">${escapeHtml(al.text)}</span>
+      </div>
+    `).join('');
+
+    detailEl.innerHTML = `
+      <h2>${escapeHtml(file.name)}</h2>
+      <div class="filepath">重複参照の検出結果</div>
+
+      <table class="report">
+        <thead><tr><th>元のラベル</th><th>参照回数</th><th>リネーム後(2件目以降)</th></tr></thead>
+        <tbody>${reportRows}</tbody>
+      </table>
+
+      <div class="section-title">変更された参照行</div>
+      ${diffRows}
+
+      <div class="section-title">追加された脚注定義</div>
+      ${addedRows}
+
+      <div class="actions">
+        <button class="download-btn" type="button">この章の修正版をダウンロード</button>
+      </div>
+    `;
+
+    detailEl.querySelector('.download-btn').addEventListener('click', () => {
+      downloadFixed(file.name, r.fixedContent);
+    });
+  }
+
+  function downloadFixed(originalName, content){
+    const dot = originalName.lastIndexOf('.');
+    const base = dot === -1 ? originalName : originalName.slice(0, dot);
+    const ext = dot === -1 ? '' : originalName.slice(dot);
+    const outName = `${base}.fixed${ext || '.md'}`;
+    const blob = new Blob([content], {type:'text/markdown;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = outName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+})();
+</script>
+</body>
+</html>
