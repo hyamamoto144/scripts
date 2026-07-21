@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>用語統一チェッカー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#eef0ea;
+    --grid-line: rgba(34,35,30,0.06);
+    --ink:#22231e;
+    --ink-soft:#63645a;
+    --ink-faint:#9a9a8d;
+    --border:#d7d5c6;
+    --shu:#c7391c;
+    --shu-soft: rgba(199,57,28,0.10);
+    --shu-line: rgba(199,57,28,0.35);
+    --ao:#3a5a73;
+    --ao-soft: rgba(58,90,115,0.10);
+    --card:#f7f7f2;
+    --radius: 3px;
+    --serif: 'Shippori Mincho', 'Hiragino Mincho ProN', serif;
+    --sans: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
+    --mono: 'JetBrains Mono', 'BIZ UDGothic', 'Courier New', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0/100% 28px,
+      var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    min-height:100vh;
+    line-height:1.75;
+  }
+  .app{max-width:1180px;margin:0 auto;padding:36px 28px 80px;}
+
+  .masthead{
+    display:flex;gap:24px;align-items:flex-end;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:18px;margin-bottom:28px;
+  }
+  .masthead .mark{font-family:var(--serif);font-weight:700;font-size:30px;line-height:1.3;white-space:nowrap;}
+  .masthead .mark small{display:block;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--shu);letter-spacing:.14em;margin-bottom:6px;}
+  .masthead .lede{font-size:13.5px;color:var(--ink-soft);max-width:56ch;margin:0 0 4px;}
+
+  .panel{
+    background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:20px 24px;margin-bottom:20px;
+  }
+  .panel h2{font-family:var(--serif);font-size:16px;font-weight:700;margin:0 0 12px;}
+
+  textarea#dictText{
+    width:100%;height:180px;font-family:var(--mono);font-size:12px;line-height:1.6;
+    padding:10px;border-radius:var(--radius);border:1px solid var(--border);resize:vertical;
+  }
+
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+  button{
+    font-family:var(--sans);font-weight:700;font-size:13px;
+    background:var(--ink);color:var(--paper);border:none;border-radius:var(--radius);
+    padding:8px 16px;cursor:pointer;
+  }
+  button:hover{background:var(--shu);}
+  button.secondary{background:transparent;color:var(--ink-soft);border:1px solid var(--border);}
+  button.secondary:hover{border-color:var(--ink-soft);color:var(--ink);background:transparent;}
+  button.primary-accent{background:var(--shu);}
+  button.primary-accent:hover{background:#a92c14;}
+  input[type=file]{font-size:12.5px;}
+
+  .summary{font-size:12.5px;color:var(--ink-soft);margin-top:10px;}
+  .warnings{margin-top:8px;font-size:12px;color:var(--shu);}
+
+  .category-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+  .category-chip{
+    display:flex;align-items:center;gap:6px;font-size:12.5px;
+    border:1px solid var(--border);border-radius:999px;padding:5px 12px;
+    background:rgba(255,255,255,0.4);
+  }
+  .category-chip input{margin:0;}
+
+  .filelist{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+  .filechip{font-family:var(--mono);font-size:11.5px;border:1px solid var(--border);border-radius:var(--radius);padding:4px 8px;background:rgba(255,255,255,0.4);}
+
+  .workspace{display:flex;gap:24px;align-items:flex-start;}
+  .rule-list{flex:0 0 300px;display:flex;flex-direction:column;gap:2px;max-height:640px;overflow-y:auto;}
+  .rule-tab{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 12px;border:1px solid transparent;border-radius:var(--radius);cursor:pointer;font-size:12.5px;
+  }
+  .rule-tab:hover{background:rgba(255,255,255,0.5);}
+  .rule-tab.active{background:var(--card);border-color:var(--border);box-shadow:-3px 0 0 var(--shu) inset;}
+  .rule-tab .rname{font-family:var(--mono);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .badge{flex:none;font-family:var(--mono);font-size:11px;font-weight:500;padding:2px 7px;border-radius:999px;background:var(--shu);color:#fff;}
+
+  .detail{flex:1;min-width:0;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px 26px;}
+  .detail h3{font-family:var(--serif);font-weight:700;font-size:16px;margin:0 0 4px;}
+  .detail .subline{font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-bottom:6px;}
+  .detail .comment{font-size:12.5px;color:var(--ao);margin-bottom:14px;}
+  .empty-state{color:var(--ink-faint);font-size:13.5px;padding:40px 10px;text-align:center;}
+
+  .bulk-actions{display:flex;gap:8px;margin-bottom:12px;}
+
+  .file-group{margin-bottom:16px;}
+  .file-group .fname{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin-bottom:6px;}
+
+  .match-row{
+    display:flex;align-items:flex-start;gap:10px;padding:8px 10px;
+    border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;font-family:var(--mono);font-size:12px;
+  }
+  .match-row input{margin-top:2px;}
+  .match-row .ctx{flex:1;white-space:pre-wrap;word-break:break-all;}
+  .match-row .ctx del{color:var(--ao);text-decoration:line-through;text-decoration-color:var(--ao-soft);}
+  .match-row .ctx ins{color:var(--shu);text-decoration:underline;text-decoration-color:var(--shu-line);text-decoration-thickness:2px;font-weight:500;}
+
+  .final-actions{margin-top:24px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .result-list{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+  .result-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:12.5px;}
+  .result-row .fname{font-family:var(--mono);}
+  .conflict-note{color:var(--shu);font-size:11.5px;}
+
+  @media (max-width:780px){
+    .workspace{flex-direction:column;}
+    .rule-list{flex:none;width:100%;max-height:240px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="masthead">
+    <div class="mark"><small>TERM UNIFICATION CHECKER</small>用語統一<br>チェッカー</div>
+    <p class="lede">WZ Editor形式の用語統一辞書をそのまま読み込み、原稿(Markdown)への適用候補を検出します。文脈を見ながら1件ずつ、あるいはルール単位でまとめて確認・反映できます。</p>
+  </header>
+
+  <section class="panel">
+    <h2>1. 辞書</h2>
+    <textarea id="dictText" placeholder="WZ形式のテキスト、または JSON({&quot;pattern&quot;,&quot;flag&quot;,&quot;expected&quot;}の配列) を貼り付け"></textarea>
+    <div class="row">
+      <input type="file" id="dictFileInput" accept=".txt,.json">
+      <button id="parseDictBtn" type="button">辞書を解析</button>
+      <button id="downloadJsonBtn" type="button" class="secondary" hidden>JSONでダウンロード</button>
+    </div>
+    <div id="dictSummary" class="summary"></div>
+    <div id="dictWarnings" class="warnings"></div>
+    <div id="categoryList" class="category-list"></div>
+  </section>
+
+  <section class="panel">
+    <h2>2. 原稿(Markdown、複数可)</h2>
+    <input type="file" id="msFileInput" accept=".md,.markdown" multiple>
+    <div id="msFileList" class="filelist"></div>
+  </section>
+
+  <section class="panel">
+    <div class="row" style="margin-top:0;">
+      <button id="detectBtn" type="button" class="primary-accent">検出</button>
+      <span id="detectSummary" class="summary" style="margin:0;"></span>
+    </div>
+  </section>
+
+  <div class="workspace" id="workspace" hidden>
+    <aside class="rule-list" id="ruleList"></aside>
+    <main class="detail" id="detail">
+      <div class="empty-state">左のリストからルールを選んでください</div>
+    </main>
+  </div>
+
+  <section class="panel" id="finalPanel" hidden>
+    <h2>3. 反映してダウンロード</h2>
+    <p class="summary" style="margin-top:0;">チェックが入っているマッチだけを原稿に反映します。ルールをまたいで範囲が重なるマッチは、後勝ちで自動的にスキップされ、下に注記されます。</p>
+    <div class="final-actions">
+      <button id="applyBtn" type="button" class="primary-accent">反映を実行</button>
+    </div>
+    <div id="resultList" class="result-list"></div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+
+  // ============ コアロジック ============
+  function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function zenkakuToHankaku(s){ return s.replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)); }
+
+  function condToLookaround(raw, isBehind){
+    raw = (raw||'').trim();
+    if (!raw) return '';
+    let neg=false, inner;
+    if (raw.startsWith('[^')){ neg=true; inner=raw.slice(2,-1); }
+    else if (raw.startsWith('[')){ inner=raw.slice(1,-1); }
+    else { inner=raw; }
+    const cls = `[${neg?'^':''}${inner}]`;
+    if (isBehind) return neg ? `(?<!${cls})` : `(?<=${cls})`;
+    return neg ? `(?!${cls})` : `(?=${cls})`;
+  }
+
+  const KNOWN_OPTIONS = ['RE','TOHAN','ZENHAN','TOZEN','SENTENCE'];
+
+  function parseWZDictionary(text){
+    const lines = text.split(/\r?\n/);
+    const rules = []; const warnings = [];
+    let currentCategory = null;
+    lines.forEach((rawLine, lineNo) => {
+      if (rawLine.trim() === '') return;
+      if (rawLine.startsWith('.#')){ currentCategory = rawLine.slice(2).trim(); return; }
+      if (rawLine.startsWith('#')) return;
+      const cols = rawLine.split('\t');
+      if (cols.length < 2) return;
+      const afterWord = cols[0] || '';
+      const beforeWord = cols[1] !== undefined ? cols[1] : '';
+      const condRaw = cols[2] !== undefined ? cols[2] : '';
+      let comment=''; let condStr=condRaw;
+      const cm = condStr.match(/<([^>]*)>\s*$/);
+      if (cm){ comment=cm[1]; condStr=condStr.slice(0,cm.index); }
+      const parts = condStr.split(',');
+      const prefixRaw=(parts[0]||'').trim(), postfixRaw=(parts[1]||'').trim(), optionRaw=(parts[2]||'').trim();
+      const options = optionRaw ? optionRaw.split('|').map(s=>s.trim()).filter(Boolean) : [];
+      const unsupportedOptions = options.filter(o=>!KNOWN_OPTIONS.includes(o));
+      const useRE = options.includes('RE');
+      const isTohanDynamic = afterWord==='' && options.includes('TOHAN');
+      let patternSource;
+      if (isTohanDynamic || useRE){ patternSource = beforeWord; }
+      else {
+        const alts = beforeWord.split('|').map(escapeRegExp);
+        patternSource = alts.length>1 ? `(?:${alts.join('|')})` : alts[0];
+      }
+      const prefixLook = condToLookaround(prefixRaw, true);
+      const postfixLook = condToLookaround(postfixRaw, false);
+      const fullPattern = `${prefixLook}(?:${patternSource})${postfixLook}`;
+      const expected = afterWord.replace(/\\(\d+)/g, '$$$1');
+      if (unsupportedOptions.length>0 && !isTohanDynamic){
+        warnings.push(`${lineNo+1}行目: 未対応のオプション(${unsupportedOptions.join(', ')}): ${rawLine}`);
+      }
+      rules.push({
+        index: rules.length, raw: rawLine, lineNo: lineNo+1, category: currentCategory,
+        afterWord, beforeWord, prefixRaw, postfixRaw, options, comment,
+        patternSource: fullPattern, expected, dynamic: isTohanDynamic ? 'TOHAN' : null, flags: ''
+      });
+    });
+    return { rules, warnings };
+  }
+
+  function parseJSONDictionary(text){
+    const data = JSON.parse(text);
+    const rules = data.map((d,i) => ({
+      index:i, raw: JSON.stringify(d), lineNo:null, category:null,
+      afterWord:d.expected, beforeWord:d.pattern, prefixRaw:'', postfixRaw:'',
+      options:d.flag?[d.flag]:[], comment:'', patternSource:d.pattern, expected:d.expected,
+      dynamic:null, flags: d.flag && /^[gimsuy]+$/.test(d.flag) ? d.flag : ''
+    }));
+    return { rules, warnings: [] };
+  }
+
+  function loadDictionary(text){
+    const t = text.trim();
+    if (t.startsWith('{') || t.startsWith('[')) return parseJSONDictionary(text);
+    return parseWZDictionary(text);
+  }
+
+  function getCategories(rules){
+    const seen = new Map();
+    rules.forEach(r => {
+      const key = r.category || '(未分類)';
+      seen.set(key, (seen.get(key)||0)+1);
+    });
+    return Array.from(seen.entries()).map(([name,count])=>({name,count}));
+  }
+
+  function computeExcludedRanges(text){
+    const ranges = [];
+    const patterns = [/```[\s\S]*?```/g, /~~~[\s\S]*?~~~/g, /`[^`\n]*`/g, /<[^>]+>/g, /\]\([^)]*\)/g];
+    patterns.forEach(re => {
+      let m; re.lastIndex=0;
+      while((m = re.exec(text)) !== null){
+        ranges.push([m.index, m.index+m[0].length]);
+        if (m[0].length===0) re.lastIndex++;
+      }
+    });
+    ranges.sort((a,b)=>a[0]-b[0]);
+    const merged=[];
+    for (const r of ranges){
+      if (merged.length && r[0] <= merged[merged.length-1][1]){
+        merged[merged.length-1][1] = Math.max(merged[merged.length-1][1], r[1]);
+      } else merged.push([...r]);
+    }
+    return merged;
+  }
+
+  function isExcluded(start,end,ranges){
+    for (const [es,ee] of ranges) if (es<end && ee>start) return true;
+    return false;
+  }
+
+  function findMatchesForRule(rule, text, excludedRanges){
+    const flags = 'g' + (rule.flags||'');
+    let regex;
+    try { regex = new RegExp(rule.patternSource, flags); } catch(e){ return { error: e.message, matches: [] }; }
+    const matches = [];
+    let m;
+    while((m = regex.exec(text)) !== null){
+      const start = m.index, end = start + m[0].length;
+      if (m[0].length===0){ regex.lastIndex++; continue; }
+      if (!isExcluded(start,end,excludedRanges)){
+        let replacement;
+        if (rule.dynamic === 'TOHAN') replacement = zenkakuToHankaku(m[0]);
+        else replacement = rule.expected.replace(/\$(\d+)/g, (_,n)=> m[Number(n)] ?? '');
+        const cs = Math.max(0, start-15), ce = Math.min(text.length, end+15);
+        matches.push({
+          start, end, matchedText:m[0], replacement,
+          before: text.slice(cs,start), after: text.slice(end,ce),
+          accepted: true
+        });
+      }
+    }
+    return { error:null, matches };
+  }
+
+  function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // ============ UI状態 ============
+  let rules = [];
+  let categories = [];
+  let categoryEnabled = {};
+  let files = []; // {name, originalText, currentText, excludedRanges}
+  let ruleMatches = []; // per rule: { rule, byFile: [{fileIdx, matches:[...]}], totalCount }
+  let activeRuleIdx = -1;
+
+  const dictText = document.getElementById('dictText');
+  const dictFileInput = document.getElementById('dictFileInput');
+  const parseDictBtn = document.getElementById('parseDictBtn');
+  const downloadJsonBtn = document.getElementById('downloadJsonBtn');
+  const dictSummary = document.getElementById('dictSummary');
+  const dictWarnings = document.getElementById('dictWarnings');
+  const categoryListEl = document.getElementById('categoryList');
+  const msFileInput = document.getElementById('msFileInput');
+  const msFileList = document.getElementById('msFileList');
+  const detectBtn = document.getElementById('detectBtn');
+  const detectSummary = document.getElementById('detectSummary');
+  const workspace = document.getElementById('workspace');
+  const ruleListEl = document.getElementById('ruleList');
+  const detailEl = document.getElementById('detail');
+  const finalPanel = document.getElementById('finalPanel');
+  const applyBtn = document.getElementById('applyBtn');
+  const resultList = document.getElementById('resultList');
+
+  dictFileInput.addEventListener('change', () => {
+    const f = dictFileInput.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => { dictText.value = reader.result; };
+    reader.readAsText(f, 'UTF-8');
+  });
+
+  parseDictBtn.addEventListener('click', () => {
+    const text = dictText.value;
+    if (!text.trim()){ dictSummary.textContent = '辞書テキストが空です。'; return; }
+    let result;
+    try { result = loadDictionary(text); }
+    catch(e){ dictSummary.textContent = '解析エラー: ' + e.message; return; }
+    rules = result.rules;
+    categories = getCategories(rules);
+    categoryEnabled = {};
+    categories.forEach(c => categoryEnabled[c.name] = true);
+    dictSummary.textContent = `ルール数: ${rules.length} / 警告: ${result.warnings.length}件`;
+    dictWarnings.innerHTML = result.warnings.slice(0,20).map(w => escapeHtml(w)).join('<br>');
+    renderCategoryList();
+    downloadJsonBtn.hidden = rules.length === 0;
+  });
+
+  downloadJsonBtn.addEventListener('click', () => {
+    const exportable = rules.filter(r => r.dynamic !== 'TOHAN');
+    const skipped = rules.length - exportable.length;
+    const json = exportable.map(r => ({
+      pattern: r.patternSource,
+      flag: r.flags || undefined,
+      expected: r.expected
+    }));
+    const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'term-dictionary.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if (skipped > 0){
+      dictSummary.textContent += ` (JSON書き出し: ${skipped}件の動的変換ルールは表現できないため除外)`;
+    }
+  });
+
+  function renderCategoryList(){
+    categoryListEl.innerHTML = categories.map(c => `
+      <label class="category-chip">
+        <input type="checkbox" data-cat="${escapeHtml(c.name)}" ${categoryEnabled[c.name] ? 'checked' : ''}>
+        ${escapeHtml(c.name)}(${c.count})
+      </label>
+    `).join('');
+    categoryListEl.querySelectorAll('input[data-cat]').forEach(cb => {
+      cb.addEventListener('change', () => { categoryEnabled[cb.dataset.cat] = cb.checked; });
+    });
+  }
+
+  msFileInput.addEventListener('change', () => {
+    const list = Array.from(msFileInput.files).filter(f => /\.(md|markdown)$/i.test(f.name));
+    let pending = list.length;
+    if (pending === 0) return;
+    list.forEach(f => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        files.push({ name:f.name, originalText: reader.result, currentText: reader.result });
+        pending--;
+        if (pending === 0) renderFileList();
+      };
+      reader.readAsText(f, 'UTF-8');
+    });
+  });
+
+  function renderFileList(){
+    msFileList.innerHTML = files.map(f => `<span class="filechip">${escapeHtml(f.name)}</span>`).join('');
+  }
+
+  detectBtn.addEventListener('click', () => {
+    if (rules.length === 0){ detectSummary.textContent = '先に辞書を解析してください。'; return; }
+    if (files.length === 0){ detectSummary.textContent = '原稿ファイルを読み込んでください。'; return; }
+
+    ruleMatches = [];
+    files.forEach(f => { f.excludedRanges = computeExcludedRanges(f.currentText); });
+
+    rules.forEach(rule => {
+      const catKey = rule.category || '(未分類)';
+      if (!categoryEnabled[catKey]) return;
+      const byFile = [];
+      let totalCount = 0;
+      files.forEach((f, fileIdx) => {
+        const { matches } = findMatchesForRule(rule, f.currentText, f.excludedRanges);
+        if (matches.length > 0){ byFile.push({ fileIdx, matches }); totalCount += matches.length; }
+      });
+      if (totalCount > 0) ruleMatches.push({ rule, byFile, totalCount });
+    });
+
+    ruleMatches.sort((a,b) => b.totalCount - a.totalCount);
+    const grand = ruleMatches.reduce((s,r)=>s+r.totalCount, 0);
+    detectSummary.textContent = `${ruleMatches.length}ルール / 合計${grand}件のマッチ`;
+    workspace.hidden = false;
+    finalPanel.hidden = ruleMatches.length === 0;
+    activeRuleIdx = -1;
+    renderRuleList();
+    detailEl.innerHTML = '<div class="empty-state">左のリストからルールを選んでください</div>';
+  });
+
+  function renderRuleList(){
+    ruleListEl.innerHTML = ruleMatches.map((rm, i) => `
+      <div class="rule-tab ${i===activeRuleIdx?'active':''}" data-idx="${i}">
+        <span class="rname">${escapeHtml(rm.rule.beforeWord || '(正規表現)')} → ${escapeHtml(rm.rule.afterWord || '(動的変換)')}</span>
+        <span class="badge">${rm.totalCount}</span>
+      </div>
+    `).join('');
+    ruleListEl.querySelectorAll('.rule-tab').forEach(el => {
+      el.addEventListener('click', () => { activeRuleIdx = parseInt(el.dataset.idx,10); renderRuleList(); renderDetail(); });
+    });
+  }
+
+  function renderDetail(){
+    if (activeRuleIdx === -1) return;
+    const rm = ruleMatches[activeRuleIdx];
+    const rule = rm.rule;
+
+    const fileBlocks = rm.byFile.map(entry => {
+      const f = files[entry.fileIdx];
+      const rows = entry.matches.map((m, mi) => `
+        <div class="match-row">
+          <input type="checkbox" ${m.accepted?'checked':''} data-rule="${activeRuleIdx}" data-file="${entry.fileIdx}" data-m="${mi}">
+          <span class="ctx">${escapeHtml(m.before)}<del>${escapeHtml(m.matchedText)}</del><ins>${escapeHtml(m.replacement)}</ins>${escapeHtml(m.after)}</span>
+        </div>
+      `).join('');
+      return `<div class="file-group"><div class="fname">${escapeHtml(f.name)}(${entry.matches.length}件)</div>${rows}</div>`;
+    }).join('');
+
+    detailEl.innerHTML = `
+      <h3>${escapeHtml(rule.beforeWord || '(正規表現マッチ)')} → ${escapeHtml(rule.afterWord || '(動的変換)')}</h3>
+      <div class="subline">全${rm.totalCount}件${rule.category ? ' / カテゴリ: ' + escapeHtml(rule.category) : ''}</div>
+      ${rule.comment ? `<div class="comment">${escapeHtml(rule.comment)}</div>` : ''}
+      <div class="bulk-actions">
+        <button type="button" class="secondary" id="acceptAllBtn">全部適用</button>
+        <button type="button" class="secondary" id="skipAllBtn">全部スキップ</button>
+      </div>
+      ${fileBlocks}
+    `;
+
+    detailEl.querySelectorAll('.match-row input[type=checkbox]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const fileIdx = parseInt(cb.dataset.file,10), mi = parseInt(cb.dataset.m,10);
+        const entry = rm.byFile.find(e => e.fileIdx === fileIdx);
+        entry.matches[mi].accepted = cb.checked;
+      });
+    });
+    document.getElementById('acceptAllBtn').addEventListener('click', () => {
+      rm.byFile.forEach(e => e.matches.forEach(m => m.accepted = true));
+      renderDetail();
+    });
+    document.getElementById('skipAllBtn').addEventListener('click', () => {
+      rm.byFile.forEach(e => e.matches.forEach(m => m.accepted = false));
+      renderDetail();
+    });
+  }
+
+  applyBtn.addEventListener('click', () => {
+    // ファイルごとに、全ルールの中で accepted な マッチを集約
+    const perFile = files.map(() => []);
+    ruleMatches.forEach(rm => {
+      rm.byFile.forEach(entry => {
+        entry.matches.forEach(m => {
+          if (m.accepted) perFile[entry.fileIdx].push(m);
+        });
+      });
+    });
+
+    resultList.innerHTML = '';
+    files.forEach((f, fileIdx) => {
+      const matches = perFile[fileIdx].slice().sort((a,b) => b.start - a.start);
+      let text = f.currentText;
+      const appliedRanges = [];
+      let appliedCount = 0, conflictCount = 0;
+      for (const m of matches){
+        const overlap = appliedRanges.some(([s,e]) => s < m.end && e > m.start);
+        if (overlap){ conflictCount++; continue; }
+        text = text.slice(0, m.start) + m.replacement + text.slice(m.end);
+        appliedRanges.push([m.start, m.end]);
+        appliedCount++;
+      }
+      f.currentText = text;
+
+      const row = document.createElement('div');
+      row.className = 'result-row';
+      row.innerHTML = `
+        <span class="fname">${escapeHtml(f.name)}</span>
+        <span>${appliedCount}件反映${conflictCount>0 ? ` <span class="conflict-note">(${conflictCount}件は範囲重複のためスキップ)</span>` : ''}</span>
+      `;
+      if (appliedCount > 0){
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = 'ダウンロード';
+        btn.addEventListener('click', () => downloadFixed(f.name, f.currentText));
+        row.appendChild(btn);
+      }
+      resultList.appendChild(row);
+    });
+  });
+
+  function downloadFixed(originalName, content){
+    const dot = originalName.lastIndexOf('.');
+    const base = dot === -1 ? originalName : originalName.slice(0, dot);
+    const ext = dot === -1 ? '' : originalName.slice(dot);
+    const outName = `${base}.fixed${ext || '.md'}`;
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = outName;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+})();
+</script>
+</body>
+</html>
